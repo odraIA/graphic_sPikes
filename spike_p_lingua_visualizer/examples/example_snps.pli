@@ -1,0 +1,10 @@
+// Ejemplo mínimo (puede requerir ajustes según versión de P-Lingua)
+input: n1;
+output: n3;
+
+neuron n1: 1 { a+/a^1 -> a^1 ; 0 | a^2 -> λ };
+neuron n2: 0 { a*/a^1 -> a^1 ; 1 };
+neuron n3: 0 { a+/a^1 -> a^1 ; 0 };
+
+syn(n1,n2);
+syn(n2,n3);
