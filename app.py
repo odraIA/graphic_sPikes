@@ -9,10 +9,18 @@ from src.compiler import CompilerService
 from src.config import AppConfig, load_config, save_config
 from src.exporters import graph_html_text, rules_csv_text, system_json_text
 from src.graph_builder import build_nx_graph, build_plotly_figure
+from src.parser_official_spiking import parse_official_spiking_pli
 from src.parser_pli import parse_pli_text
 from src.parser_xml import parse_xml_file
-from src.plingua_dialect import looks_like_official_plingua
-from src.simulator import SimulationService, run_internal_simulation
+from src.plingua_dialect import (
+    looks_like_official_plingua,
+    looks_like_official_spiking,
+)
+from src.simulator import (
+    SimulationService,
+    run_internal_simulation,
+    run_internal_simulation_system,
+)
 
 EXAMPLES_DIR = Path("examples")
 
@@ -25,7 +33,8 @@ def init_state() -> None:
         "editor_text": "",
         "source_name": "manual",
         "system": None,
-        "compiled_xml": None,
+        "compiled_artifact": None,
+        "compiled_artifact_format": None,
         "compilation_result": None,
         "simulation_result": None,
         "graph": None,
@@ -39,7 +48,8 @@ def init_state() -> None:
 def invalidate_if_changed() -> None:
     if st.session_state.editor_text != st.session_state.last_processed_text:
         st.session_state.system = None
-        st.session_state.compiled_xml = None
+        st.session_state.compiled_artifact = None
+        st.session_state.compiled_artifact_format = None
         st.session_state.compilation_result = None
         st.session_state.simulation_result = None
         st.session_state.graph = None
@@ -123,7 +133,9 @@ with st.sidebar:
     )
     if not comp.is_available() or not sim.is_available():
         st.info(
-            "P-Lingua no parece instalado/configurado. Puedes usar el parser y el simulador interno parcial; la compilación y la simulación oficial requieren el backend externo."
+            "P-Lingua no parece instalado/configurado. Puedes usar el parser y "
+            "el simulador interno parcial; la compilación y la simulación "
+            "oficial requieren el backend externo."
         )
 
 st.subheader("Editor y carga")
@@ -151,43 +163,140 @@ with cols[2]:
 st.text_area("Código P-Lingua (.pli)", key="editor_text", height=280)
 invalidate_if_changed()
 st.caption(
-    f"Fuente actual: {st.session_state.source_name}. El parser parcial no es una validación formal completa de P-Lingua."
+    f"Fuente actual: {st.session_state.source_name}. El parser parcial no es "
+    "una validación formal completa de P-Lingua."
 )
 
 c1, c2 = st.columns(2)
 if c1.button("Compilar"):
-    if not st.session_state.editor_text.strip():
+    source = st.session_state.editor_text
+
+    if not source.strip():
         st.warning("No hay código para compilar.")
-    elif not looks_like_official_plingua(st.session_state.editor_text):
+
+    elif not looks_like_official_plingua(source):
         st.info(
-            "Este texto usa el subconjunto parcial de la app, no P-Lingua oficial. Se construirá el grafo sin invocar pLinguaCore."
+            "El texto usa el formato simplificado de la aplicación. "
+            "Se analizará con el parser parcial."
         )
+
         st.session_state.compilation_result = None
-        st.session_state.compiled_xml = None
-        st.session_state.system = parse_pli_text(st.session_state.editor_text)
+        st.session_state.compiled_artifact = None
+        st.session_state.compiled_artifact_format = None
+        st.session_state.system = parse_pli_text(source)
         st.session_state.graph = build_nx_graph(st.session_state.system)
-        st.session_state.last_processed_text = st.session_state.editor_text
-    else:
-        result = CompilerService(config.plingua_cmd).compile_to_xml(
-            st.session_state.editor_text, config.compile_timeout_ms
-        )
-        st.session_state.compilation_result = result
-        if result.success and Path(result.output_xml_path).exists():
-            st.session_state.compiled_xml = Path(result.output_xml_path).read_text(
-                encoding="utf-8"
-            )
-            st.session_state.system = parse_xml_file(result.output_xml_path)
+        st.session_state.last_processed_text = source
+
+        st.success("Estructura parcial procesada correctamente.")
+
+    elif looks_like_official_spiking(source):
+        st.info("Compilación iniciada para P-Lingua oficial spiking.")
+        try:
+            st.session_state.system = parse_official_spiking_pli(source)
+            st.session_state.graph = build_nx_graph(st.session_state.system)
+            st.session_state.last_processed_text = source
+        except ValueError as exc:
+            st.error(str(exc))
+            st.session_state.compilation_result = None
+            st.session_state.compiled_artifact = None
+            st.session_state.compiled_artifact_format = None
+            st.session_state.system = None
+            st.session_state.graph = None
         else:
-            st.session_state.system = parse_pli_text(st.session_state.editor_text)
-        st.session_state.graph = build_nx_graph(st.session_state.system)
-        st.session_state.last_processed_text = st.session_state.editor_text
-if c2.button("Visualizar estructura parcial"):
-    if st.session_state.editor_text.strip():
-        st.session_state.system = parse_pli_text(st.session_state.editor_text)
-        st.session_state.graph = build_nx_graph(st.session_state.system)
-        st.session_state.last_processed_text = st.session_state.editor_text
+            compiler = CompilerService(config.plingua_cmd)
+            with st.spinner("Validando con P-Lingua en formato BIN..."):
+                result = compiler.compile_official_spiking(
+                    source,
+                    config.compile_timeout_ms,
+                )
+
+            st.session_state.compilation_result = result
+            st.session_state.compiled_artifact = None
+            st.session_state.compiled_artifact_format = None
+
+            if result.success:
+                st.session_state.system.compilation_status = "compiled_bin"
+                if Path(result.output_path).exists():
+                    st.session_state.compiled_artifact = Path(
+                        result.output_path
+                    ).read_bytes()
+                    st.session_state.compiled_artifact_format = result.output_format
+                st.success("Compilación spiking correcta. Artefacto BIN generado.")
+            else:
+                st.session_state.system.compilation_status = (
+                    "parsed_official_spiking_compile_failed"
+                )
+                st.error("La validación/compilación BIN de P-Lingua ha fallado.")
+                if result.stderr:
+                    st.code(result.stderr, language="text")
+                elif result.stdout:
+                    st.code(result.stdout, language="text")
+                st.write("Comando ejecutado:")
+                st.code(" ".join(result.command), language="bash")
+
     else:
-        st.warning("No hay código para visualizar.")
+        compiler = CompilerService(config.plingua_cmd)
+
+        if not compiler.is_available():
+            st.error(
+                "No se encuentra el compilador P-Lingua. "
+                "Configura PLINGUA_CMD en la barra lateral."
+            )
+            st.code(config.plingua_cmd, language="text")
+
+            st.session_state.compilation_result = None
+            st.session_state.compiled_artifact = None
+            st.session_state.compiled_artifact_format = None
+            st.session_state.system = None
+            st.session_state.graph = None
+
+        else:
+            with st.spinner("Compilando con P-Lingua..."):
+                result = compiler.compile_to_xml(
+                    source,
+                    config.compile_timeout_ms,
+                )
+
+            st.session_state.compilation_result = result
+
+            if not result.success:
+                st.error("La compilación de P-Lingua ha fallado.")
+
+                if result.stderr:
+                    st.code(result.stderr, language="text")
+
+                elif result.stdout:
+                    st.code(result.stdout, language="text")
+
+                st.write("Comando ejecutado:")
+                st.code(" ".join(result.command), language="bash")
+
+                st.session_state.compiled_artifact = None
+                st.session_state.compiled_artifact_format = None
+                st.session_state.system = None
+                st.session_state.graph = None
+
+            elif not Path(result.output_path).exists():
+                st.error("P-Lingua no generó el archivo XML esperado.")
+
+                st.session_state.compiled_artifact = None
+                st.session_state.compiled_artifact_format = None
+                st.session_state.system = None
+                st.session_state.graph = None
+
+            else:
+                st.session_state.compiled_artifact = Path(
+                    result.output_path
+                ).read_bytes()
+                st.session_state.compiled_artifact_format = result.output_format
+
+                st.session_state.system = parse_xml_file(result.output_path)
+
+                st.session_state.graph = build_nx_graph(st.session_state.system)
+
+                st.session_state.last_processed_text = source
+
+                st.success("Archivo compilado correctamente.")
 
 system = st.session_state.system
 graph = st.session_state.graph
@@ -199,7 +308,8 @@ with tabs[0]:
     if graph:
         st.plotly_chart(build_plotly_figure(graph), width="stretch")
         st.caption(
-            "Leyenda: azul=normal, verde=entrada, naranja=salida, morado=entrada y salida. Las marcas triangulares indican dirección."
+            "Leyenda: azul=normal, verde=entrada, naranja=salida, "
+            "morado=entrada y salida. Las marcas triangulares indican dirección."
         )
     else:
         st.info("Compila o visualiza parcialmente para construir el grafo.")
@@ -248,12 +358,27 @@ with tabs[2]:
             st.warning("No hay código para simular.")
         elif not looks_like_official_plingua(st.session_state.editor_text):
             st.info(
-                "Este ejemplo usa el subconjunto parcial de la app; se ejecutará la simulación interna parcial sin llamar a pLinguaCore."
+                "Este ejemplo usa el subconjunto parcial de la app; se "
+                "ejecutará la simulación interna parcial sin llamar a pLinguaCore."
             )
             st.session_state.simulation_result = run_internal_simulation(
                 st.session_state.editor_text, config.max_steps
             )
-        else:
+        elif looks_like_official_spiking(st.session_state.editor_text):
+            if (
+                not st.session_state.system
+                or st.session_state.editor_text != st.session_state.last_processed_text
+            ):
+                try:
+                    st.session_state.system = parse_official_spiking_pli(
+                        st.session_state.editor_text
+                    )
+                    st.session_state.graph = build_nx_graph(st.session_state.system)
+                    st.session_state.last_processed_text = st.session_state.editor_text
+                except ValueError as exc:
+                    st.error(str(exc))
+                    st.session_state.simulation_result = None
+                    st.stop()
             sim_service = SimulationService(config.plingua_sim_cmd)
             if sim_service.is_available():
                 result = sim_service.run(
@@ -264,28 +389,26 @@ with tabs[2]:
                     config.allow_alternative_steps,
                     config.allow_backwards,
                 )
-                if result.success:
-                    st.session_state.simulation_result = result
-                else:
-                    st.warning(
-                        "El simulador externo no pudo interpretar este P-Lingua; se usará la simulación interna parcial."
-                    )
-                    st.session_state.simulation_result = run_internal_simulation(
-                        st.session_state.editor_text, config.max_steps
-                    )
-                    st.session_state.simulation_result.stderr = (
-                        result.stderr or result.stdout
-                    )
-                    st.session_state.simulation_result.parse_warnings.extend(
-                        result.parse_warnings
-                    )
+                st.session_state.simulation_result = result
+                if not result.success:
+                    st.error("El simulador externo falló para este P-Lingua oficial.")
+                    if result.stderr:
+                        st.code(result.stderr, language="text")
+                    elif result.stdout:
+                        st.code(result.stdout, language="text")
             else:
                 st.warning(
-                    "El simulador externo no está disponible; se usará la simulación interna parcial."
+                    "El simulador externo no está disponible; se usará la "
+                    "simulación interna parcial sobre el sistema oficial ya parseado."
                 )
-                st.session_state.simulation_result = run_internal_simulation(
-                    st.session_state.editor_text, config.max_steps
+                st.session_state.simulation_result = run_internal_simulation_system(
+                    st.session_state.system, config.max_steps
                 )
+        else:
+            st.error(
+                "Este modelo P-Lingua oficial todavía no está soportado por "
+                "la simulación de la app."
+            )
     sr = st.session_state.simulation_result
     if sr:
         st.write(
@@ -316,7 +439,8 @@ with tabs[3]:
                 "timeout": cr.timed_out,
                 "command": cr.command,
                 "input_path": cr.input_path,
-                "output_xml_path": cr.output_xml_path,
+                "output_path": cr.output_path,
+                "output_format": cr.output_format,
             }
         )
         st.text_area("stdout compilación", cr.stdout, height=120)
@@ -348,10 +472,16 @@ with tabs[4]:
             file_name=f"{base}_sistema.json",
             mime="application/json",
         )
-    if st.session_state.compiled_xml:
+    if st.session_state.compiled_artifact:
+        artifact_format = st.session_state.compiled_artifact_format or "bin"
+        mime = (
+            "application/xml"
+            if artifact_format == "xml"
+            else "application/octet-stream"
+        )
         st.download_button(
-            "Descargar XML compilado",
-            st.session_state.compiled_xml.encode("utf-8"),
-            file_name=f"{base}_compilado.xml",
-            mime="application/xml",
+            f"Descargar {artifact_format.upper()} compilado",
+            st.session_state.compiled_artifact,
+            file_name=f"{base}_compilado.{artifact_format}",
+            mime=mime,
         )

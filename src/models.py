@@ -47,7 +47,8 @@ class CompilationResult(BaseModel):
     stderr: str
     return_code: int
     input_path: str
-    output_xml_path: str
+    output_path: str
+    output_format: str
     timed_out: bool = False
     command: list[str] = Field(default_factory=list)
 

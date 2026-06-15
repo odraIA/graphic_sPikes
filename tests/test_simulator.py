@@ -5,7 +5,9 @@ from src.simulator import (
     SimulationService,
     parse_simulation_report,
     run_internal_simulation,
+    run_internal_simulation_system,
 )
+from src.parser_official_spiking import parse_official_spiking_pli
 
 
 class DummyProc:
@@ -84,3 +86,18 @@ def test_internal_simulation_fallback() -> None:
     assert result.success
     assert result.command == ["internal-simulator"]
     assert result.spike_train == "100"
+
+
+def test_internal_simulation_accepts_preparsed_official_system() -> None:
+    system = parse_official_spiking_pli(
+        """
+        @model<spiking_psystems>
+        @mu = 1;
+        @ms(1) = a;
+        @mout = 1;
+        [a --> a]'1;
+        """
+    )
+    result = run_internal_simulation_system(system, 2)
+    assert result.success
+    assert result.spike_train == "10"

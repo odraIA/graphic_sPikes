@@ -1,0 +1,49 @@
+// Traducción del grafo al subconjunto .pli admitido por graphic_sPikes.
+// El nodo 0 es el entorno, por eso no se declara como neurona.
+// El grafo no marca una neurona de entrada; se usa n1 como entrada
+// únicamente para completar el formato esperado por el parser.
+
+input: n1;
+output: n1;
+
+neuron n1: 1 {
+  a/a -> a ; 0 |
+  a^2 -> λ
+};
+
+neuron n2: 0 {
+  a{4}/a^4 -> a ; 0 |
+  a{4}/a^3 -> a ; 0
+};
+
+neuron n3: 0 {
+  a{4}/a^4 -> a ; 0 |
+  a -> λ
+};
+
+neuron n4: 0 {
+  a/a -> a ; 0
+};
+
+neuron n5: 0 {
+  a/a -> a ; 0
+};
+
+// Conexiones superiores
+syn(n2,n1);
+syn(n3,n1);
+syn(n1,n3);
+
+// Conexiones desde n1 hacia la parte inferior
+syn(n1,n4);
+syn(n1,n5);
+
+// Conexiones desde n4
+syn(n4,n2);
+syn(n4,n3);
+syn(n4,n5);
+
+// Conexiones desde n5
+syn(n5,n2);
+syn(n5,n3);
+syn(n5,n4);

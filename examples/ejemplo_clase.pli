@@ -1,0 +1,39 @@
+@model<spiking_psystems>
+
+def main()
+{
+    call spiking_init_conf();
+    call spiking_rules();
+}
+
+def spiking_init_conf()
+{
+    @mu = 1,2,3,4,5;
+
+    @ms(1) = a;
+
+    @marcs = (1,3), (1,4), (1,5);
+    @marcs += (2,1), (3,1);
+    @marcs += (4,2), (5,2);
+    @marcs += (4,3), (5,3);
+    @marcs += (4,5), (5,4);
+
+    @mout = 1;
+
+    @moutres_binary;
+}
+
+def spiking_rules()
+{
+    [a --> a]'1;
+    [a*2 --> #]'1;
+
+    [a*4 --> a]'2;
+    [a*3 --> a]'2 "a{4}";
+
+    [a*4 --> a]'3;
+    [a --> #]'3;
+
+    [a --> a]'4;
+    [a --> a]'5;
+}

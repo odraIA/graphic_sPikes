@@ -187,8 +187,7 @@ def _select_rule(
     return None
 
 
-def run_internal_simulation(pli_source: str, max_steps: int) -> SimulationResult:
-    system: SNSystem = parse_pli_text(pli_source)
+def run_internal_simulation_system(system: SNSystem, max_steps: int) -> SimulationResult:
     spikes = {neuron.id: neuron.initial_spikes for neuron in system.neurons}
     outgoing = {
         neuron.id: [syn.target for syn in system.synapses if syn.source == neuron.id]
@@ -247,3 +246,7 @@ def run_internal_simulation(pli_source: str, max_steps: int) -> SimulationResult
         parse_warnings=warnings,
         command=["internal-simulator"],
     )
+
+
+def run_internal_simulation(pli_source: str, max_steps: int) -> SimulationResult:
+    return run_internal_simulation_system(parse_pli_text(pli_source), max_steps)
