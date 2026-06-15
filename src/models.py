@@ -36,6 +36,9 @@ class SNSystem(BaseModel):
     output_neuron: str | None = None
     raw_source: str = ""
     compilation_status: str = "not_compiled"
+    warnings: list[str] = Field(default_factory=list)
+    recognized_blocks: list[str] = Field(default_factory=list)
+    ignored_blocks: list[str] = Field(default_factory=list)
 
 
 class CompilationResult(BaseModel):
@@ -45,6 +48,8 @@ class CompilationResult(BaseModel):
     return_code: int
     input_path: str
     output_xml_path: str
+    timed_out: bool = False
+    command: list[str] = Field(default_factory=list)
 
 
 class SimulationResult(BaseModel):
@@ -55,3 +60,6 @@ class SimulationResult(BaseModel):
     report_path: str | None = None
     step_rows: list[dict] = Field(default_factory=list)
     spike_train: str | None = None
+    timed_out: bool = False
+    parse_warnings: list[str] = Field(default_factory=list)
+    command: list[str] = Field(default_factory=list)

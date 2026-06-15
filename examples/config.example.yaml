@@ -2,6 +2,7 @@ plingua_cmd: plingua
 plingua_sim_cmd: plingua_sim
 max_steps: 50
 timeout_ms: 5000
+compile_timeout_ms: 5000
 simulator_mode: null
 allow_alternative_steps: false
 allow_backwards: false

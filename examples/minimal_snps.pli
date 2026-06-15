@@ -1,0 +1,7 @@
+// Ejemplo mínimo para el parser parcial
+input: n1;
+output: n1;
+
+neuron n1: 1 {
+  a/a -> a ; 0
+};
