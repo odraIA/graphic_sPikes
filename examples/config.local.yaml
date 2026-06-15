@@ -1,0 +1,14 @@
+plingua_cmd: plingua
+plingua_sim_cmd: plingua_sim
+max_steps: 50
+timeout_ms: 5000
+simulator_mode: null
+allow_alternative_steps: false
+allow_backwards: false
+views:
+  show_editor: true
+  show_graph: true
+  show_xml: true
+  show_rules_table: true
+  show_simulation_table: true
+  show_spike_train: true
