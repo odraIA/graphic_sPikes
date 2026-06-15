@@ -361,8 +361,14 @@ with tabs[2]:
                 "Este ejemplo usa el subconjunto parcial de la app; se "
                 "ejecutará la simulación interna parcial sin llamar a pLinguaCore."
             )
+            rule_choices = {
+                (3, "n2"): 0,
+                (5, "n2"): 1,
+            }
             st.session_state.simulation_result = run_internal_simulation(
-                st.session_state.editor_text, config.max_steps
+                st.session_state.editor_text,
+                config.max_steps,
+                rule_choices,
             )
         elif looks_like_official_spiking(st.session_state.editor_text):
             if (
@@ -419,6 +425,34 @@ with tabs[2]:
                 "command": sr.command,
             }
         )
+        simulation_summary = {
+            "entorno_final": sr.environment,
+            "spikes_en_entorno": sr.environment_spikes,
+            "pasos_ejecutados": sr.executed_steps,
+            "tiempo_segundos": sr.elapsed_seconds,
+            "configuración_de_parada": sr.halted,
+        }
+
+        simulation_summary = {
+            key: value
+            for key, value in simulation_summary.items()
+            if value is not None
+        }
+
+        if simulation_summary:
+            st.subheader("Resumen de P-Lingua")
+            st.write(simulation_summary)
+
+        if (
+            sr.environment_spikes is not None
+            and not sr.spike_train
+        ):
+            st.info(
+                "El simulador externo ha devuelto el multiconjunto "
+                "final del entorno, no un spike train por pasos. "
+                "Por eso se puede mostrar el número final de spikes, "
+                "pero no reconstruir la secuencia temporal completa."
+            )
         st.text_area("stdout", sr.stdout, height=160)
         st.text_area("stderr", sr.stderr, height=100)
         for w in sr.parse_warnings:

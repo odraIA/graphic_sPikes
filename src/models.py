@@ -59,8 +59,16 @@ class SimulationResult(BaseModel):
     stderr: str
     return_code: int
     report_path: str | None = None
+
     step_rows: list[dict] = Field(default_factory=list)
     spike_train: str | None = None
+
+    environment: str | None = None
+    environment_spikes: int | None = None
+    executed_steps: int | None = None
+    elapsed_seconds: float | None = None
+    halted: bool | None = None
+
     timed_out: bool = False
     parse_warnings: list[str] = Field(default_factory=list)
     command: list[str] = Field(default_factory=list)
