@@ -1,0 +1,15 @@
+// Ejemplo con varias neuronas y reglas admitidas por el parser parcial
+input: n1;
+output: n3;
+
+neuron n1: 2 {
+  a+/a^2 -> a ; 1 |
+  a -> l
+};
+
+neuron n2: 0 { a*/a -> a^2 ; 0 };
+neuron n3: 0 { a+/a -> a ; 0 | a^3 -> λ };
+
+syn(n1,n2);
+syn(n2,n3);
+syn(n1,n3);

@@ -3,9 +3,10 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+from typing import Any
 
 import yaml
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 
 
 class ViewConfig(BaseModel):
@@ -22,22 +23,35 @@ class AppConfig(BaseModel):
     plingua_sim_cmd: str = Field(default_factory=lambda: os.getenv("PLINGUA_SIM_CMD", "plingua_sim"))
     max_steps: int = 50
     timeout_ms: int = 5000
+    compile_timeout_ms: int = 5000
     simulator_mode: str | None = None
     allow_alternative_steps: bool = False
     allow_backwards: bool = False
     views: ViewConfig = Field(default_factory=ViewConfig)
 
 
-def load_config(path: str | Path) -> AppConfig:
-    content = Path(path).read_text(encoding="utf-8")
-    if str(path).endswith(".json"):
-        return AppConfig.model_validate(json.loads(content))
-    return AppConfig.model_validate(yaml.safe_load(content))
-
-
-def save_config(config: AppConfig, path: str | Path) -> None:
+def load_config(path: str | Path) -> tuple[AppConfig, str | None]:
     path_obj = Path(path)
-    if str(path).endswith(".json"):
-        path_obj.write_text(json.dumps(config.model_dump(), indent=2), encoding="utf-8")
-    else:
-        path_obj.write_text(yaml.safe_dump(config.model_dump(), sort_keys=False), encoding="utf-8")
+    if not path_obj.exists():
+        return AppConfig(), f"No existe el archivo de configuración: {path_obj}"
+    try:
+        content = path_obj.read_text(encoding="utf-8")
+        data: Any = json.loads(content) if path_obj.suffix == ".json" else yaml.safe_load(content)
+        if data is None:
+            data = {}
+        return AppConfig.model_validate(data), None
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError, yaml.YAMLError, ValidationError) as exc:
+        return AppConfig(), f"No se pudo cargar la configuración: {exc}"
+
+
+def save_config(config: AppConfig, path: str | Path) -> tuple[bool, str | None]:
+    path_obj = Path(path)
+    try:
+        path_obj.parent.mkdir(parents=True, exist_ok=True)
+        if path_obj.suffix == ".json":
+            path_obj.write_text(json.dumps(config.model_dump(), indent=2), encoding="utf-8")
+        else:
+            path_obj.write_text(yaml.safe_dump(config.model_dump(), sort_keys=False), encoding="utf-8")
+        return True, None
+    except OSError as exc:
+        return False, f"No se pudo guardar la configuración: {exc}"
