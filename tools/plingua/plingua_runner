@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+command_name="${1:?missing pLingua command}"
+shift
+
+script_dir="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+jar_path="$script_dir/MeCoGUI.jar"
+cache_dir="${PLINGUA_CACHE_DIR:-$script_dir/.cache}"
+lib_dir="$cache_dir/lib"
+
+if [[ ! -f "$jar_path" ]]; then
+  echo "No se encontró MeCoGUI.jar en $jar_path" >&2
+  exit 127
+fi
+
+if ! command -v java >/dev/null 2>&1; then
+  echo "No se encontró Java. Instala OpenJDK para usar pLinguaCore." >&2
+  exit 127
+fi
+
+if ! command -v unzip >/dev/null 2>&1; then
+  echo "No se encontró unzip. Es necesario para extraer dependencias internas del JAR." >&2
+  exit 127
+fi
+
+mkdir -p "$lib_dir"
+if [[ ! -f "$lib_dir/.ready" || "$jar_path" -nt "$lib_dir/.ready" ]]; then
+  unzip -q -o "$jar_path" "*.jar" -d "$lib_dir"
+  touch "$lib_dir/.ready"
+fi
+
+classpath="$jar_path"
+while IFS= read -r dependency; do
+  classpath="$classpath:$dependency"
+done < <(find "$lib_dir" -type f -name "*.jar" | sort)
+
+exec java -cp "$classpath" org.gcn.plinguacore.applications.AppMain "$command_name" "$@"

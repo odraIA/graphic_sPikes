@@ -1,5 +1,5 @@
-plingua_cmd: plingua
-plingua_sim_cmd: plingua_sim
+plingua_cmd: tools/plingua/plingua
+plingua_sim_cmd: tools/plingua/plingua_sim
 max_steps: 50
 timeout_ms: 5000
 compile_timeout_ms: 5000

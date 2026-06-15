@@ -13,7 +13,8 @@ Aplicación académica en **Python + Streamlit** para inspeccionar modelos de **
 - Parser parcial tolerante a comentarios `//`, espacios variables, reglas/neuronas multilínea, `->`, olvido con `λ` o `l`, exponentes `a^n` y casos simples `a`.
 - Grafo dirigido con NetworkX + Plotly, flechas visibles, estilos para entrada/salida, spikes iniciales y tooltips con reglas.
 - Selector de neurona con detalle de reglas, sinapsis entrantes/salientes y metadatos.
-- Simulación externa conservada, con timeout, reporte de salida y parseo heurístico de spike train/tabla por pasos cuando sea posible.
+- Simulación interna parcial para el subconjunto simple reconocido por el parser cuando no hay backend externo.
+- Simulación externa conservada, con timeout, reporte de salida y parseo heurístico de spike train/tabla por pasos cuando `PLINGUA_SIM_CMD` está disponible.
 - Descargas reales con `st.download_button`: CSV de reglas, HTML del grafo, XML compilado y JSON parseado.
 
 ## Flujo de uso
@@ -53,11 +54,11 @@ uv run pytest
 Variables de entorno soportadas:
 
 ```bash
-export PLINGUA_CMD="plingua"
-export PLINGUA_SIM_CMD="plingua_sim"
+export PLINGUA_CMD="$PWD/tools/plingua/plingua"
+export PLINGUA_SIM_CMD="$PWD/tools/plingua/plingua_sim"
 ```
 
-También se pueden editar en la barra lateral de Streamlit. En modo **Diseñador** se puede guardar/cargar YAML o JSON. La carga maneja archivos inexistentes o contenido inválido sin cerrar la aplicación.
+El proyecto incluye esos wrappers para `tools/plingua/MeCoGUI.jar`. Si las variables no están definidas y los wrappers existen, la app los usa por defecto. También se pueden editar en la barra lateral de Streamlit. En modo **Diseñador** se puede guardar/cargar YAML o JSON. La carga maneja archivos inexistentes o contenido inválido sin cerrar la aplicación.
 
 El diagnóstico muestra:
 
@@ -67,7 +68,9 @@ El diagnóstico muestra:
 - ruta real encontrada por `shutil.which`;
 - mensajes comprensibles cuando no hay backend instalado.
 
-La ausencia de P-Lingua no impide usar la visualización parcial.
+La ausencia de P-Lingua no impide usar la visualización parcial ni la simulación interna parcial. La simulación interna es determinista, limitada al subconjunto simple que reconoce el parser, y no sustituye al simulador oficial.
+
+Nota: los ejemplos incluidos usan el subconjunto parcial de la app y no se envían a pLinguaCore. La app solo invoca `PLINGUA_CMD`/`PLINGUA_SIM_CMD` cuando el texto parece P-Lingua oficial, es decir, cuando contiene una cabecera `@model`. Esto evita errores del backend oficial con construcciones parciales como `a*/a`, que pLinguaCore puede confundir con cierres de comentario `*/`.
 
 ## Subconjunto aproximado soportado por el parser parcial
 
@@ -85,7 +88,7 @@ Soporta comentarios `//`, mayúsculas/minúsculas en palabras clave básicas, ne
 ## Limitaciones reales
 
 - No se implementa un compilador P-Lingua completo.
-- No se implementa un simulador interno completo de SN P systems.
+- No se implementa un simulador interno completo de SN P systems; el fallback interno cubre solo reglas simples reconocidas por el parser parcial.
 - El formato exacto de compilación/simulación depende del backend externo instalado.
 - El parseo de reportes de simulación es heurístico y puede no reconocer todos los formatos.
 - Los ejemplos están diseñados para el subconjunto parcial del parser; no se afirma compatibilidad con una versión concreta de P-Lingua.
