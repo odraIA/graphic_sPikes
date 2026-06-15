@@ -1,4 +1,4 @@
-# SN P-Lingua Visualizer
+# Visualizador Spiking
 
 Aplicación académica en **Python + Streamlit** para inspeccionar modelos de **Spiking Neural P Systems (SN P systems)** escritos en un subconjunto simple de P-Lingua (`.pli`). El proyecto puede intentar compilar y simular con ejecutables externos de P-Lingua, pero también funciona sin ellos mediante un parser parcial orientado a visualización.
 
@@ -51,6 +51,38 @@ uv run pytest
 
 ## Configuración de P-Lingua
 
+El backend oficial de P-Lingua/pLinguaCore es opcional. La app funciona sin él para visualizar y simular parcialmente los ejemplos incluidos, pero para usar el compilador/simulador oficial hace falta Java y un JAR de pLinguaCore.
+
+### Opción recomendada: usar el compilador incluido
+
+Este repositorio incluye `tools/plingua/MeCoGUI.jar` y tres wrappers de consola:
+
+```text
+tools/plingua/plingua          Compilador P-Lingua
+tools/plingua/plingua_sim      Simulador P-Lingua
+tools/plingua/plingua_runner   Lanzador común para el JAR
+```
+
+Requisitos del sistema:
+
+```bash
+java -version
+unzip -v
+```
+
+Si falta Java, instala OpenJDK con el gestor de paquetes de tu sistema. En Ubuntu/Debian:
+
+```bash
+sudo apt-get install openjdk-21-jre unzip
+```
+
+Comprueba que los wrappers funcionan:
+
+```bash
+tools/plingua/plingua -h
+tools/plingua/plingua_sim -h
+```
+
 Variables de entorno soportadas:
 
 ```bash
@@ -59,6 +91,33 @@ export PLINGUA_SIM_CMD="$PWD/tools/plingua/plingua_sim"
 ```
 
 El proyecto incluye esos wrappers para `tools/plingua/MeCoGUI.jar`. Si las variables no están definidas y los wrappers existen, la app los usa por defecto. También se pueden editar en la barra lateral de Streamlit. En modo **Diseñador** se puede guardar/cargar YAML o JSON. La carga maneja archivos inexistentes o contenido inválido sin cerrar la aplicación.
+
+### Descargar o sustituir pLinguaCore
+
+Si no quieres usar el JAR incluido, descarga pLinguaCore/MeCoGUI desde la documentación oficial de P-Lingua:
+
+- Sitio principal: <http://www.p-lingua.org>
+- Compilador de línea de comandos: <http://www.p-lingua.org/wiki/index.php/A_command-line_compiler>
+- Simulador de línea de comandos: <http://www.p-lingua.org/wiki/index.php/A_command-line_simulator>
+
+Después coloca el JAR descargado en:
+
+```text
+tools/plingua/MeCoGUI.jar
+```
+
+Si lo guardas en otra ruta, puedes crear tus propios wrappers o configurar comandos completos en la barra lateral. Por ejemplo:
+
+```bash
+export PLINGUA_CMD="/ruta/a/tu/plingua"
+export PLINGUA_SIM_CMD="/ruta/a/tu/plingua_sim"
+```
+
+En Linux/macOS, si tienes scripts externos `plingua` y `plingua_sim`, asegúrate de que sean ejecutables:
+
+```bash
+chmod +x /ruta/a/tu/plingua /ruta/a/tu/plingua_sim
+```
 
 El diagnóstico muestra:
 

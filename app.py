@@ -16,8 +16,8 @@ from src.simulator import SimulationService, run_internal_simulation
 
 EXAMPLES_DIR = Path("examples")
 
-st.set_page_config(page_title="SN P Visualizer", layout="wide")
-st.title("Visualizador de SN P Systems en P-Lingua")
+st.set_page_config(page_title="Visualizador Spiking", layout="wide")
+st.title("Visualizador Spiking")
 
 
 def init_state() -> None:
